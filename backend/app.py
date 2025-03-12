@@ -1,27 +1,18 @@
 from flask import Flask, request, jsonify
-import database
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
-
+import database
+import os
 
 app = Flask(__name__, static_folder="static", static_url_path="/")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABSE_URI")
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-
-app.config["JWT_SECRET_KEY"] = "supersecret"  
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-
 CORS(app)
-
-
-hardcoded_users = {
-    "ashaan@ufl.edu": bcrypt.generate_password_hash("password").decode("utf-8"),
-    "test1@example.com": bcrypt.generate_password_hash("abc123").decode("utf-8"),
-    "test2@example.com": bcrypt.generate_password_hash("qwerty").decode("utf-8"),
-    "test3@example.com": bcrypt.generate_password_hash("secret").decode("utf-8")
-}
-
+database.init(app)
 
 @app.route("/")
 def index():
@@ -31,9 +22,24 @@ def index():
 def not_found(e):
     return app.send_static_file("index.html")
 
-@app.route("/test")
-def test():
-    return "<p>Hello, {}!</p>".format(database.getCurrentDatabase())
+@app.route("/signup", methods=["POST"])
+def signup():
+    """
+    Simple signup route:
+    Expects JSON: { "email": "...", "password": "..." }
+    Returns JWT token if successful
+    """
+    data = request.json
+    email = data.get("email")
+    password = data.get("password")
+
+    uuid = database.signup(app, bcrypt, email, password)
+    if uuid is not None:
+        # Create JWT
+        token = create_access_token(identity=uuid)
+        return jsonify({"access_token": token}), 200
+    else:
+        return jsonify({"error": "Failed to signup"}), 401
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -46,14 +52,13 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    if email in hardcoded_users and bcrypt.check_password_hash(hardcoded_users[email], password):
+    uuid = database.login(app, bcrypt, email, password)
+    if uuid is not None:
         # Create JWT
-        token = create_access_token(identity=email)
+        token = create_access_token(identity=uuid)
         return jsonify({"access_token": token}), 200
     else:
         return jsonify({"error": "Invalid credentials"}), 401
-
-
 
 
 if __name__ == "__main__":
