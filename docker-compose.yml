@@ -24,7 +24,8 @@ services:
     ports:
       - 8000:8000
     environment:
-      - POSTGRES_CONNECTION=postgresql://dev:password@postgres/selfstudy_db
+      - DATABSE_URI=postgresql://dev:password@postgres/selfstudy_db
+      - JWT_SECRET_KEY=supersecret
 volumes:
   postgres:
     driver: local
