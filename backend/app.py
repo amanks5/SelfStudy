@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask import Flask, request, jsonify, redirect
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, set_access_cookies, unset_jwt_cookies, get_jwt
 from flask_bcrypt import Bcrypt
+from flask_cors import CORS
+
+from datetime import timedelta, datetime, timezone
 import database
 import uuid
 import os
@@ -12,10 +14,14 @@ import flashcards
 app = Flask(__name__, static_folder="static", static_url_path="/")
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABSE_URI")
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
+app.config["JWT_COOKIE_SECURE"] = False # TODO: SET TO TRUE IN PROD
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
-CORS(app) # TODO: REMOVE/RESTRICT CORS AFTER DEVELOPMENT (security risk)
+# TODO: REMOVE/RESTRICT CORS AFTER DEVELOPMENT (security risk)
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:8000", "http://0.0.0.0:8000", "http://127.0.0.1:8000"]}})
 database.init(app)
 
 @app.route("/")
@@ -39,9 +45,10 @@ def signup():
 
     uuid = database.signup(app, bcrypt, email, password)
     if uuid is not None:
-        # Create JWT
-        token = create_access_token(identity=uuid)
-        return jsonify({"access_token": token}), 200
+        access_token = create_access_token(identity=uuid)
+        response = jsonify({"access_token": access_token})
+        set_access_cookies(response, access_token)
+        return response
     else:
         return jsonify({"error": "Failed to signup"}), 401
 
@@ -58,92 +65,115 @@ def login():
 
     uuid = database.login(app, bcrypt, email, password)
     if uuid is not None:
-        # Create JWT
-        token = create_access_token(identity=uuid)
-        return jsonify({"access_token": token}), 200
+        access_token = create_access_token(identity=uuid)
+        response = jsonify({"access_token": access_token})
+        set_access_cookies(response, access_token)
+        return response
     else:
         return jsonify({"error": "Invalid credentials"}), 401
 
+@app.route("/logout")
+def logout():
+    response = redirect("/")
+    unset_jwt_cookies(response)
+    return response
 
-'''
-I tested all of these functions using POSTMAN but they are pretty self explanatory, I don't have much experience using 
-React so I returned all of them as json b/c that's what it said in the tutorials I watched, lmk what to change
-'''
-### TODO: authenticate requests
-### TODO: api url prefix
+# Using an `after_request` callback, we refresh any token that is within 30
+# minutes of expiring. Change the timedeltas to match the needs of your application.
+@app.after_request
+def refresh_expiring_jwts(response):
+    try:
+        exp_timestamp = get_jwt()["exp"]
+        now = datetime.now(timezone.utc)
+        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
+        if target_timestamp > exp_timestamp:
+            access_token = create_access_token(identity=get_jwt_identity())
+            set_access_cookies(response, access_token)
+        return response
+    except (RuntimeError, KeyError):
+        # Case where there is not a valid JWT. Just return the original response
+        return response
 
-@app.route("/notes", methods=["POST"])
+"""
+API routes below
+"""
+
+@app.route("/api/me", methods=["GET"])
+@jwt_required()
+def me():
+    return database.get_user_email(app, get_jwt_identity())
+
+# notes section
+
+@app.route("/api/notes", methods=["POST"])
+@jwt_required()
 def create_note():
     data = request.json
-    owner = uuid.uuid4() # TODO: get note owner from session (just setting owner to random id to random rn)
+    owner = get_jwt_identity()
     title = data.get("title")
     content = data.get("content")
     note_id = notes.create_note(app, owner, title, content)
     return jsonify({"message": "Note created", "id": note_id})
 
-
-@app.route("/notes", methods=["GET"])
+@app.route("/api/notes", methods=["GET"])
+@jwt_required()
 def get_notes():
-    all_notes = notes.fetch_all_notes(app)
-    return jsonify(all_notes)
+    return jsonify(notes.fetch_all_notes(app, get_jwt_identity()))
 
-
-@app.route("/notes/<note_id>", methods=["GET"])
+@app.route("/api/notes/<note_id>", methods=["GET"])
+@jwt_required()
 def get_note(note_id):
-    note = notes.fetch_note(app, note_id)
-    return jsonify(note)
+    return jsonify(notes.fetch_note(app, note_id, get_jwt_identity()))
 
-
-@app.route("/notes/<note_id>", methods=["PUT"])
+@app.route("/api/notes/<note_id>", methods=["PUT"])
+@jwt_required()
 def edit_note(note_id):
     data = request.json
     title = data.get("title")
     content = data.get("content")
-    notes.edit_note(app, note_id, title, content)
-    return jsonify({"message": "Note Edited"})
+    return jsonify({"message": "Note edited" if notes.edit_note(app, note_id, get_jwt_identity(), title, content) else "Failed to edit note"})
 
-
-@app.route("/notes/<note_id>", methods=["DELETE"])
+@app.route("/api/notes/<note_id>", methods=["DELETE"])
+@jwt_required()
 def delete_note(note_id): 
-    return jsonify({"message": "Note deleted" if notes.delete_note(app, note_id) else "Failed to delete note"})
-
+    return jsonify({"message": "Note deleted" if notes.delete_note(app, note_id, get_jwt_identity()) else "Failed to delete note"})
 
 # flashcard section
 
-@app.route("/flashcards", methods=["POST"])
+@app.route("/api/flashcards", methods=["POST"])
+@jwt_required()
 def create_flashcard():
     data = request.json
-    owner = uuid.uuid4() # TODO: get note owner from session (just setting owner to random id to random rn)
+    owner =  get_jwt_identity()
     front_card = data.get("front_card")
     back_card = data.get("back_card")
     flashcard_id = flashcards.create_flashcard(app, owner, front_card, back_card)
     return jsonify({"message": "Flashcard created", "id": flashcard_id})
 
 
-@app.route("/flashcards", methods=["GET"])
+@app.route("/api/flashcards", methods=["GET"])
+@jwt_required()
 def get_flashcards():
-    all_flashcards = flashcards.fetch_all_flashcards(app)
-    return jsonify(all_flashcards)
+    return jsonify(flashcards.fetch_all_flashcards(app, get_jwt_identity()))
 
 
-@app.route("/flashcards/<flashcard_id>", methods=["GET"])
+@app.route("/api/flashcards/<flashcard_id>", methods=["GET"])
+@jwt_required()
 def get_flashcard(flashcard_id):
-    card = flashcards.fetch_flashcard(app, flashcard_id)
-    return jsonify(card)
+    return jsonify(flashcards.fetch_flashcard(app, flashcard_id, get_jwt_identity()))
 
 
-@app.route("/flashcards/<flashcard_id>", methods=["PUT"])
+@app.route("/api/flashcards/<flashcard_id>", methods=["PUT"])
+@jwt_required()
 def edit_flashcard(flashcard_id):
     data = request.json
     front_card = data.get("front_card")
     back_card = data.get("back_card")
-    flashcards.update_flashcard(app, flashcard_id, front_card, back_card)
+    flashcards.update_flashcard(app, flashcard_id, get_jwt_identity(), front_card, back_card)
     return jsonify({"message": "Flashcard updated"})
 
 
-@app.route("/flashcards/<flashcard_id>", methods=["DELETE"])
+@app.route("/api/flashcards/<flashcard_id>", methods=["DELETE"])
+@jwt_required()
 def delete_flashcard(flashcard_id): 
-    return jsonify({"message": "Flashcard deleted" if flashcards.delete_flashcard(app, flashcard_id) else "Failed to delete flashcard"})
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8000)
+    return jsonify({"message": "Flashcard deleted" if flashcards.delete_flashcard(app, flashcard_id, get_jwt_identity()) else "Failed to delete flashcard"})

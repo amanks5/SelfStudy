@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "./api";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
@@ -19,7 +19,7 @@ const Signup = () => {
     }
 
     try {
-      const response = await axios.post("http://localhost:8000/signup", {
+      const response = await api.post("/signup", {
         email,
         password,
       });
