@@ -33,46 +33,31 @@ const Signup = () => {
     }
   };
 
-
   return (
-    <div>
-      <h2>Signup</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email: </label>
-          <input 
-            type="email" 
-            value={email}
-            required
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Password: </label>
-          <input 
-            type="password"
-            value={password}
-            required
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Confirm Password: </label>
-          <input 
-            type="password"
-            value={passwordConfirm}
-            required
-            onChange={(e) => setPasswordConfirm(e.target.value)}
-          />
-        </div>
-        <button type="submit">Signup</button>
-      </form>
+    <div className="flex w-screen h-screen items-center">
+      <div className="container grid mx-auto w-3/12 h-7/12 rounded-md border-4 border-dashed border-[#A62929] p-3">
+        <h1 className="font-serif text-[#A62929] font-black text-center text-3xl">signup</h1>
+        <form className="mx-auto w-11/12" onSubmit={handleSubmit}>
+          <div className="my-2">
+            <label className="font-serif text-[#A62929] font-semibold text-base">email:</label><br/>
+            <input className="w-full rounded-sm bg-white font-serif text-base px-1 text-[#A62929] py-0.5" type="email" value={email} required onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="my-2">
+            <label className="font-serif text-[#A62929] font-semibold text-base">password:</label><br/>
+            <input className="w-full rounded-sm bg-white font-serif text-base px-1 text-[#A62929] py-0.5" type="password" value={password} required onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <div className="my-2">
+            <label className="font-serif text-[#A62929] font-semibold text-base">confirm password:</label><br/>
+            <input className="w-full rounded-sm bg-white font-serif text-base px-1 text-[#A62929] py-0.5" type="password" value={passwordConfirm} required onChange={(e) => setPasswordConfirm(e.target.value)} />
+          </div><br/>
+          <button className="w-full rounded-sm bg-[#A62929] font-serif font-bold text-[#F2DAC4] text-center py-1 cursor-pointer" type="submit">signup</button>
+        </form>
 
-
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
+        {message && <p style={{ color: "green" }}>{message}</p>}
+      </div>
     </div>
-  );
+  )
 };
 
 export default Signup;
