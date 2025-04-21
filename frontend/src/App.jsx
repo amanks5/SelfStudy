@@ -18,7 +18,7 @@ function Footer() {
 
 function App() {
   return (
-    <body className="bg-[#F2DAC4]">
+    <div>
     <Header />
     <Router>
       <Routes>
@@ -29,7 +29,7 @@ function App() {
       </Routes>
     </Router>
     <Footer />
-    </body>
+    </div>
   );
 }
 
