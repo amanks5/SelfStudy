@@ -27,6 +27,7 @@ const Signup = () => {
 
       localStorage.setItem("token", token);
       setMessage("Signup successful! Token stored in localStorage.");
+      window.location.href = "/";
     } catch (err) {
       // If signup fails error message 
       setError("Failed to signup");

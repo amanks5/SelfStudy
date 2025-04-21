@@ -21,6 +21,7 @@ const Login = () => {
 
       localStorage.setItem("token", token);
       setMessage("Login successful! Token stored in localStorage.");
+      window.location.href = "/";
     } catch (err) {
       // If login fails error message 
       setError("Invalid credentials");

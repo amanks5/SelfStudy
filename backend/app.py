@@ -101,7 +101,8 @@ API routes below
 @app.route("/api/me", methods=["GET"])
 @jwt_required()
 def me():
-    return database.get_user_email(app, get_jwt_identity())
+    uuid = get_jwt_identity()
+    return jsonify({"uuid": uuid, "email": database.get_user_email(app, uuid)})
 
 # notes section
 
