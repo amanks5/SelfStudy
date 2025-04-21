@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, redirect
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, set_access_cookies, unset_jwt_cookies, get_jwt
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+from spaced_rep import update_flashcard_review
+from database import *
 
 from datetime import timedelta, datetime, timezone
 import database
@@ -46,9 +48,13 @@ def signup():
     uuid = database.signup(app, bcrypt, email, password)
     if uuid is not None:
         access_token = create_access_token(identity=uuid)
+        """
         response = jsonify({"access_token": access_token})
         set_access_cookies(response, access_token)
-        return response
+        commented this out to test quizzing in postman without cookies
+        """
+
+        return jsonify({"access_token": access_token})
     else:
         return jsonify({"error": "Failed to signup"}), 401
 
@@ -66,9 +72,12 @@ def login():
     uuid = database.login(app, bcrypt, email, password)
     if uuid is not None:
         access_token = create_access_token(identity=uuid)
+        """
         response = jsonify({"access_token": access_token})
         set_access_cookies(response, access_token)
-        return response
+        commented this out to test quizzing in postman without cookies
+        """
+        return jsonify({"access_token": access_token})
     else:
         return jsonify({"error": "Invalid credentials"}), 401
 
@@ -177,3 +186,40 @@ def edit_flashcard(flashcard_id):
 @jwt_required()
 def delete_flashcard(flashcard_id): 
     return jsonify({"message": "Flashcard deleted" if flashcards.delete_flashcard(app, flashcard_id, get_jwt_identity()) else "Failed to delete flashcard"})
+
+
+@app.route("/api/quiz", methods=["GET"])
+@jwt_required()
+def get_due_flashcards():
+    user_id = get_jwt_identity()
+    now = datetime.now()
+    cards = db.session.execute(
+        db.select(UserFlashCard)
+        .where(UserFlashCard.owner == user_id, UserFlashCard.due_date <= now)
+        .order_by(UserFlashCard.due_date)
+    ).scalars()
+    return jsonify([
+        {'id': card.uuid, 'front_card': card.front, 'back_card': card.back}
+        for card in cards
+    ])
+
+@app.route("/api/quiz/<flashcard_id>", methods=["POST"])
+@jwt_required()
+def review_flashcard(flashcard_id):
+    """
+    Accepts a quality score (i.e 0-5) and updates spaced rep stats
+    """
+    user_id = get_jwt_identity()
+    data = request.json
+    quality = int(data.get("quality", 0))
+
+    card = db.session.execute(
+        db.select(UserFlashCard)
+        .where(UserFlashCard.uuid == flashcard_id, UserFlashCard.owner == user_id)
+    ).scalar_one_or_none()
+    if not card:
+        return jsonify({"error": "Flashcard not found"}), 404
+
+    card = update_flashcard_review(card, quality)
+    db.session.commit()
+    return jsonify({"message": "Review updated"})
