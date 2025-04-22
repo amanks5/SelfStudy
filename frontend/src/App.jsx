@@ -1,5 +1,6 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./Home";
 import Login from "./Login";
 import Signup from "./Signup";
 import NoteEditor from "./NoteEditor";
@@ -19,16 +20,16 @@ function Footer() {
 function App() {
   return (
     <div>
-    <Header />
-    <Router>
-      <Routes>
-        <Route path="/" element={<h1 class="underline">Hello, Worldd!</h1>} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/write" element={<NoteEditor />} />
-      </Routes>
-    </Router>
-    <Footer />
+        <Header />
+        <Router>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/notes/:id" element={<NoteEditor />} />
+          </Routes>
+        </Router>
+        <Footer />
     </div>
   );
 }
