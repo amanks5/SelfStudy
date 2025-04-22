@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import UUID, String, DateTime, Text
+from sqlalchemy import UUID, String, DateTime, Text, Integer, Float
 from sqlalchemy.orm import mapped_column
 from sqlalchemy.sql import func
 from flask_bcrypt import Bcrypt
@@ -36,6 +36,12 @@ class UserFlashCard(db.Model):
     back = mapped_column(Text())
     created_at = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now())
+
+    #spaced rep based on a quality scale of 0-5 w/ 5 being understand the card the most
+    ease_factor = mapped_column(Float(), default=2.5) #each card start w mid value of 2.5 cause its on a scale of 0-5
+    interval = mapped_column(Integer(), default=1) #how many days until this card will be shown again, default = 1 day
+    repetitions = mapped_column(Integer(), default=0) #how many time user successfully recalls flashcard in a row
+    due_date = mapped_column(DateTime(timezone=True), default=func.now()) #when flashcard is scheduled for review next
 
 def init(app):
     db.init_app(app)
