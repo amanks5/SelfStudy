@@ -48,13 +48,10 @@ def signup():
     uuid = database.signup(app, bcrypt, email, password)
     if uuid is not None:
         access_token = create_access_token(identity=uuid)
-        """
+
         response = jsonify({"access_token": access_token})
         set_access_cookies(response, access_token)
-        commented this out to test quizzing in postman without cookies
-        """
-
-        return jsonify({"access_token": access_token})
+        return response
     else:
         return jsonify({"error": "Failed to signup"}), 401
 
@@ -72,12 +69,9 @@ def login():
     uuid = database.login(app, bcrypt, email, password)
     if uuid is not None:
         access_token = create_access_token(identity=uuid)
-        """
         response = jsonify({"access_token": access_token})
         set_access_cookies(response, access_token)
-        commented this out to test quizzing in postman without cookies
-        """
-        return jsonify({"access_token": access_token})
+        return response
     else:
         return jsonify({"error": "Invalid credentials"}), 401
 
