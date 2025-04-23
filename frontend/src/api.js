@@ -6,10 +6,12 @@ function getCookie(key) {
 }
 
 const api = axios.create({
-    headers: {
-        "X-CSRF-TOKEN": getCookie("csrf_access_token")
-    },
-    withCredentials: true
+  baseURL: "http://localhost:8000", 
+  headers: {
+      "X-CSRF-TOKEN": getCookie("csrf_access_token")
+  },
+  withCredentials: true
 });
+
 
 export default api;

@@ -1,22 +1,30 @@
-import React, { useState, useRef } from "react";
-import { useParams } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import api from "./api";
 
 const NoteEditor = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const noteNameRef = useRef(null);
     const noteContentRef = useRef(null);
 
-    api.get("/api/notes/" + id).then((res) => {
-        noteNameRef.current.value = res.data.title;
-        noteContentRef.current.value = res.data.content;
-    });
+    const [saved, setSaved] = useState(false);
+
+    useEffect(() => {
+        api.get("/api/notes/" + id).then((res) => {
+            if (noteNameRef.current) noteNameRef.current.value = res.data.title;
+            if (noteContentRef.current) noteContentRef.current.value = res.data.content;
+        });
+    }, [id]);
 
     const saveNote = (event) => {
         api.put("/api/notes/" + id, {
             title: noteNameRef.current.value,
             content: noteContentRef.current.value
+        }).then(() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
         }).catch((e) => alert("Failed to save note!"));
     };
 
@@ -28,6 +36,8 @@ const NoteEditor = () => {
             </div>
             <div className="col-span-3 row-span-16 border-dashed border-4 border-[#A62929] rounded-lg px-2 py-1.5">
                 <button onClick={saveNote} className="w-full mx-auto rounded-sm bg-[#A62929] font-serif text-[#F2DAC4] py-0.5 my-0.5 cursor-pointer">💾 save note</button>
+                {saved && <p className="text-sm text-[#F2DAC4] font-serif text-center mt-1">✅ Note saved!</p>}
+                <button onClick={() => navigate("/")} className="w-full mx-auto rounded-sm bg-white font-serif text-[#A62929] border border-[#A62929] py-0.5 my-2 cursor-pointer hover:bg-[#F2DAC4]">← back to notes</button>
                 <button className="w-full mx-auto rounded-sm bg-[#A62929] font-serif text-[#F2DAC4] py-0.5 my-0.5 cursor-pointer">💡 generate summary</button>
                 <button className="w-full mx-auto rounded-sm bg-[#A62929] font-serif text-[#F2DAC4] py-0.5 my-0.5 cursor-pointer">💡 generate flashcards</button>
             </div>

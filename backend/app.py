@@ -14,7 +14,7 @@ import notes
 import flashcards
 
 app = Flask(__name__, static_folder="static", static_url_path="/")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABSE_URI")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_TOKEN_LOCATION"] = ["cookies", "headers"]
 app.config["JWT_COOKIE_SECURE"] = False # TODO: SET TO TRUE IN PROD
@@ -23,7 +23,9 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 # TODO: REMOVE/RESTRICT CORS AFTER DEVELOPMENT (security risk)
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:8000", "http://0.0.0.0:8000", "http://127.0.0.1:8000"]}})
+#CORS(app, resources={r"/api/*": {"origins": ["http://localhost:8000", "http://0.0.0.0:8000", "http://127.0.0.1:8000"]}})
+CORS(app, origins=["http://localhost:3000"], supports_credentials=True)
+
 database.init(app)
 
 @app.route("/")
